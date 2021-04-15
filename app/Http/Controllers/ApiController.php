@@ -2,43 +2,54 @@
 
 namespace App\Http\Controllers;
 
+use Exception;
 use App\Models\User;
 use App\Models\ExchangeRate;
 use Illuminate\Http\Request;
+use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Enums\CryptoCurrencyEnum;
 use Illuminate\Support\Facades\Validator;
+use Tymon\JWTAuth\Exceptions\JWTException;
 use Symfony\Component\HttpFoundation\Response;
 
 class ApiController extends Controller
 {
-    /**
-     * Create a new AuthController instance.
-     *
-     * @return void
-     */
+
     public function __construct()
     {
         $this->middleware('auth:api', ['except' => ['login', 'register']]);
     }
 
-    /**
-     * Get a JWT token via given credentials.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function login(Request $request)
     {
         $credentials = $request->only('email', 'password');
+        $validator = Validator::make($credentials, [
+            'email' => 'required|email',
+            'password' => 'required|string|min:6|max:50'
+        ]);
 
-        if ($token = $this->guard()->attempt($credentials)) {
-            return $this->respondWithToken($token);
+        if ($validator->fails()) {
+            return response()->json(['message' => $validator->messages()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        return response()->json(['message' => 'Email or Password is invalid'], Response::HTTP_UNAUTHORIZED);
+        try {
+            if (!$token = JWTAuth::attempt($credentials)) {
+                return response()->json([
+                    'message' => 'Login credentials are invalid.',
+                ], Response::HTTP_UNAUTHORIZED);
+            }
+        } catch (JWTException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        return response()->json([
+            'token' => $token,
+            'user' => auth()->user(),
+        ], Response::HTTP_OK);
     }
 
     public function register(Request $request)
@@ -51,84 +62,45 @@ class ApiController extends Controller
         ]);
 
         if ($validator->fails()) {
-
-            $errorMessage = "An error occurred while registering the user";
-            if (!empty($validator->messages()->get('email'))) {
-                $errorMessage = $validator->messages()->get('email')[0];
-            }
-
-            return response()->json(['message' => $errorMessage], Response::HTTP_BAD_REQUEST);
+            return response()->json(['message' => $validator->messages()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => bcrypt($request->password)
-        ]);
+        try {
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => bcrypt($request->password)
+            ]);
 
-        return response()->json([
-            'message' => 'User Registration successful',
-        ], Response::HTTP_OK);
+            return response()->json([
+                'message' => 'User Registration successful',
+                'user' => $user
+            ], Response::HTTP_CREATED);
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
-    /**
-     * Get the authenticated User
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function profile()
     {
         return response()->json($this->guard()->user(), Response::HTTP_OK);
     }
 
-    /**
-     * Log the user out (Invalidate the token)
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function logout()
     {
         $this->guard()->logout();
 
-        return response()->json(['message' => 'Successfully logged out'], Response::HTTP_OK);
+        return response()->json(['message' => 'Successfully logged out'], Response::HTTP_NO_CONTENT);
     }
 
-    /**
-     * Refresh a token.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function refresh()
-    {
-        return $this->respondWithToken($this->guard()->refresh());
-    }
-
-    /**
-     * Get the token array structure.
-     *
-     * @param  string $token
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    protected function respondWithToken($token)
-    {
-        return response()->json([
-            'access_token' => $token,
-            'token_type' => 'bearer',
-            'expires_in' => $this->guard()->factory()->getTTL() * 60
-        ]);
-    }
-
-    public function getBTCRate()
+    public function getExchangeRate()
     {
         $btcExchangeRate = ExchangeRate::where('currency_id', CryptoCurrencyEnum::Bitcoin)->get(['price', 'amount'])->first();
         return response()->json($btcExchangeRate, Response::HTTP_OK);
     }
-    /**
-     * Get the guard to be used during authentication.
-     *
-     * @return \Illuminate\Contracts\Auth\Guard
-     */
+
     public function guard()
     {
         return Auth::guard('api');
