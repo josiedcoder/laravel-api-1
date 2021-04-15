@@ -5,7 +5,6 @@ namespace App\Providers;
 use App\Models\ExchangeRate;
 use App\Observers\ExchangeRateObserver;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Schema;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -31,6 +30,5 @@ class AppServiceProvider extends ServiceProvider
     {
         //
         ExchangeRate::observe(ExchangeRateObserver::class);
-        Schema::defaultStringLength(191);
     }
 }
