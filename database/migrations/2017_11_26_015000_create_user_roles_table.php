@@ -16,15 +16,15 @@ class CreateUserRolesTable extends Migration
         Schema::create('user_roles', function (Blueprint $table) {
             $type = DB::connection()->getDoctrineColumn(DB::getTablePrefix().'admins', 'id')->getType()->getName();
             if ($type == 'bigint') {
-                $table->bigInteger('admin_id')->unsigned()->index();
+                $table->bigInteger('user_id')->unsigned()->index();
             } else {
-                $table->integer('admin_id')->unsigned()->index();
+                $table->integer('user_id')->unsigned()->index();
             }
 
-            $table->foreign('admin_id')->references('id')->on('admins')->onDelete('cascade');
+            $table->foreign('user_id')->references('id')->on('admins')->onDelete('cascade');
             $table->bigInteger('role_id')->unsigned()->index();
             $table->foreign('role_id')->references('id')->on('roles')->onDelete('cascade');
-            $table->primary(['admin_id', 'role_id']);
+            $table->primary(['user_id', 'role_id']);
         });
     }
 
