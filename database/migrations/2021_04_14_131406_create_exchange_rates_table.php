@@ -17,8 +17,8 @@ class CreateExchangeRatesTable extends Migration
             $table->id();
             $table->string('name');
             $table->string('symbol');
-            $table->timestamp('amount');
-            $table->string('price');
+            $table->integer('amount');
+            $table->decimal('price',12,7);
             $table->integer('currency_id')->unique();
             $table->timestamps();
         });
