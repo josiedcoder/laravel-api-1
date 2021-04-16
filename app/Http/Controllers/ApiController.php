@@ -37,12 +37,12 @@ class ApiController extends Controller
         try {
             if (!$token = JWTAuth::attempt($credentials)) {
                 return response()->json([
-                    'message' => 'Login credentials are invalid.',
+                    'message' => ['login' => ['Login credentials are invalid.']],
                 ], Response::HTTP_UNAUTHORIZED);
             }
         } catch (JWTException $e) {
             return response()->json([
-                'message' => $e->getMessage(),
+                'message' => ['login' => [$e->getMessage()]],
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
@@ -78,7 +78,7 @@ class ApiController extends Controller
             ], Response::HTTP_CREATED);
         } catch (Exception $e) {
             return response()->json([
-                'message' => $e->getMessage(),
+                'message' => ['register' => [$e->getMessage()]],
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
